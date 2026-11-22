@@ -2,8 +2,13 @@ name: Semantic Release
 on:
     push:
         branches: ["main"]
+# GITHUB_TOKEN нужен только плагину @semantic-release/github (GitHub Release),
+# пушить им не нужно: релизный коммит и тег уходят по deploy key (см. checkout).
+# id-token: write — публикация в npm через Trusted Publishing (OIDC), без
+# долгоживущего NPM_TOKEN; provenance добавляется автоматически.
 permissions:
     contents: write
+    id-token: write
 concurrency:
     group: semantic-release
     cancel-in-progress: false
@@ -14,23 +19,54 @@ jobs:
         # иначе бесконечный цикл. Не используем "[skip ci]" тут намеренно — эта метка
         # глушит вообще все workflow'ы на пуш, включая node.js.yml/storybook.js.yml.
         #
-        # Примечание: пуш из этой джобы делается через GITHUB_TOKEN, а такие пуши по
-        # правилам GitHub Actions в принципе не каскадируют в другие workflow (в т.ч.
-        # release.js.yml по тегу v*) — поэтому npm publish сделан прямо тут, через
-        # @semantic-release/npm, а не через отдельный tag-triggered воркфлоу.
+        # Гард рабочий, а не формальный: пуш по deploy key, в отличие от
+        # GITHUB_TOKEN, запускает workflow, и релизный коммит приходит сюда новым
+        # событием push.
         if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+        # Секрет RELEASE_DEPLOY_KEY лежит в environment `release`, который
+        # пускает только ветку main. Это же имя environment указано у trusted
+        # publisher пакетов на npmjs.com.
+        environment: release
         steps:
             - name: Checkout 🛎️
               uses: actions/checkout@v4
               with:
                   fetch-depth: 0
                   persist-credentials: true
+                  # С ssh-key origin становится git@github.com:…, и semantic-release
+                  # пушит релизный коммит и тег по нему: SSH-доступ проверяется
+                  # первым, на GITHUB_TOKEN он переходит, только если SSH не работает.
+                  # Deploy key стоит в bypass ruleset'а main.
+                  ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
+            # До semantic-release: без рабочего ключа релиз обязан упасть здесь.
+            # Пустой секрет checkout не замечает и молча берёт GITHUB_TOKEN по
+            # HTTPS, а пуш под ним ruleset main отклонит — поэтому проверяется и
+            # сам секрет, и URL origin, и что GitHub ключ принимает.
+            - name: Verify release deploy key 🔑
+              env:
+                  RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+              run: |
+                  if [ -z "$RELEASE_DEPLOY_KEY" ]; then
+                      echo "::error::Секрет RELEASE_DEPLOY_KEY не задан в environment release."
+                      exit 1
+                  fi
+                  ORIGIN_URL=$(git remote get-url origin)
+                  case "$ORIGIN_URL" in
+                      git@github.com:*) ;;
+                      *) echo "::error::origin не SSH ($ORIGIN_URL) — пуш по deploy key невозможен."; exit 1 ;;
+                  esac
+                  if ! git ls-remote --exit-code origin HEAD > /dev/null; then
+                      echo "::error::GitHub не принял RELEASE_DEPLOY_KEY (ключ удалён из Deploy keys?)."
+                      exit 1
+                  fi
 
             - uses: actions/setup-node@v4
               with:
                   # semantic-release сам по себе требует Node ^22.14 || >=24.10 — это только
                   # версия для тулинга в этом job'е, на публикуемый пакет (Node 20.10.0 в
-                  # остальных воркфлоу) никак не влияет.
+                  # остальных воркфлоу) никак не влияет. npm для публикации берётся из
+                  # зависимостей @semantic-release/npm (11.x), он умеет Trusted Publishing.
                   node-version: "22"
 
             - name: Configure git identity 👤
@@ -51,7 +87,9 @@ jobs:
             - name: Release 🚀
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                  # NPM_TOKEN намеренно не передаётся: без него @semantic-release/npm
+                  # публикует через Trusted Publishing (OIDC).
+                  #
                   # @semantic-release/npm бампает версию в каждом pkgRoot через
                   # `npm version ... --no-git-tag-version`, запуская его ИЗНУТРИ
                   # packages/{core,cells,source}. Внутри npm workspaces это триггерит
@@ -73,5 +111,6 @@ jobs:
               # после того, как @semantic-release/git закоммитил и запушил
               # chore(release) в main, откатываем этот коммит (и тег, если он уже
               # успел создаться), чтобы main не застревал в грязном состоянии.
+              # Пушит по тому же deploy key (origin — SSH).
               if: failure()
               run: ./rollback-release.sh
