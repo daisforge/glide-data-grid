@@ -11,7 +11,7 @@ import {
     useTheme,
     GridCellKind,
     TextCellEntry,
-} from "@glideappsfinal/glide-data-grid";
+} from "@daisforge/glide-data-grid";
 
 interface CustomMenuProps extends MenuProps<any> {}
 

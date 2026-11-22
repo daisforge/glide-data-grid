@@ -6,7 +6,7 @@ import {
     interpolateColors,
     type Rectangle,
     type Theme,
-} from "@glideappsfinal/glide-data-grid";
+} from "@daisforge/glide-data-grid";
 import { roundedRect } from "../draw-fns.js";
 
 type PackedColor = string | readonly [normal: string, hover: string];

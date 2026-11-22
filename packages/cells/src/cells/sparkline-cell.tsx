@@ -1,4 +1,4 @@
-import { type CustomCell, parseToRgba, type Item, type CustomRenderer, GridCellKind } from "@glideappsfinal/glide-data-grid";
+import { type CustomCell, parseToRgba, type Item, type CustomRenderer, GridCellKind } from "@daisforge/glide-data-grid";
 
 interface SparklineCellProps {
     readonly kind: "sparkline-cell";

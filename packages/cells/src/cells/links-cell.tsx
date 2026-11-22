@@ -5,7 +5,7 @@ import {
     getMiddleCenterBias,
     GridCellKind,
     blend,
-} from "@glideappsfinal/glide-data-grid";
+} from "@daisforge/glide-data-grid";
 import { styled } from "@linaria/react";
 import * as React from "react";
 

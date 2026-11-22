@@ -18,16 +18,16 @@ module.exports = {
             name: "css-alias-resolver",
             enforce: "pre", // Выполняем до других плагинов, чтобы перехватить до применения алиасов
             resolveId(id, importer) {
-                // Если это CSS импорт из @glideappsfinal/glide-data-grid
+                // Если это CSS импорт из @daisforge/glide-data-grid
                 if (id && typeof id === "string") {
                     // Проверяем различные варианты CSS импортов
                     if (
-                        id === "@glideappsfinal/glide-data-grid/dist/index.css" ||
-                        id === "@glideappsfinal/glide-data-grid/index.css" ||
-                        (id.startsWith("@glideappsfinal/glide-data-grid") && id.endsWith(".css"))
+                        id === "@daisforge/glide-data-grid/dist/index.css" ||
+                        id === "@daisforge/glide-data-grid/index.css" ||
+                        (id.startsWith("@daisforge/glide-data-grid") && id.endsWith(".css"))
                     ) {
                         // Извлекаем путь после пакета
-                        let path = id.replace("@glideappsfinal/glide-data-grid", "");
+                        let path = id.replace("@daisforge/glide-data-grid", "");
                         // Убираем начальный слэш, если есть
                         if (path.startsWith("/")) {
                             path = path.substring(1);
@@ -113,7 +113,7 @@ module.exports = {
             },
             optimizeDeps: {
                 include: [
-                    "@glideappsfinal/glide-data-grid",
+                    "@daisforge/glide-data-grid",
                     "prosemirror-keymap",
                     "prosemirror-history",
                     "es-toolkit/compat",
