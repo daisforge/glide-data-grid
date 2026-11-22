@@ -8,7 +8,7 @@ import {
     GridCellKind,
     type ProvideEditorCallback,
     TextCellEntry,
-} from "@glideappsfinal/glide-data-grid";
+} from "@daisforge/glide-data-grid";
 
 export const StyledInputBox = styled.input`
     min-height: 26px;

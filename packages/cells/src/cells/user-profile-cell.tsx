@@ -7,7 +7,7 @@ import {
     type CustomRenderer,
     getMiddleCenterBias,
     GridCellKind,
-} from "@glideappsfinal/glide-data-grid";
+} from "@daisforge/glide-data-grid";
 
 interface UserProfileCellProps {
     readonly kind: "user-profile-cell";
