@@ -2230,7 +2230,8 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                                 },
                                 true,
                                 isMultiKey,
-                                "click"
+                                "click",
+                                rangeSelect === "multi-rect" || rangeSelect === "multi-cell"
                             );
                             lastSelectedRowRef.current = undefined;
                             focus();
@@ -2318,6 +2319,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
         [
             rowSelect,
             columnSelect,
+            rangeSelect,
             gridSelection,
             hasRowMarkers,
             rowMarkerOffset,

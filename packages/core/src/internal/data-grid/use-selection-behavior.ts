@@ -28,7 +28,8 @@ export function useSelectionBehavior(
             value: Pick<NonNullable<GridSelection["current"]>, "cell" | "range"> | undefined,
             expand: boolean,
             append: boolean,
-            trigger: SelectionTrigger
+            trigger: SelectionTrigger,
+            preserveRangeStack = false
         ) => {
             if ((rangeSelect === "cell" || rangeSelect === "multi-cell") && value !== undefined) {
                 value = {
@@ -63,7 +64,10 @@ export function useSelectionBehavior(
                         ? undefined
                         : {
                               ...value,
-                              rangeStack: trigger === "drag" ? (gridSelection.current?.rangeStack ?? []) : [],
+                              rangeStack:
+                                  trigger === "drag" || preserveRangeStack
+                                      ? (gridSelection.current?.rangeStack ?? [])
+                                      : [],
                           },
                 columns: allowColumnCoSelect ? gridSelection.columns : CompactSelection.empty(),
                 rows: allowRowCoSelect ? gridSelection.rows : CompactSelection.empty(),
