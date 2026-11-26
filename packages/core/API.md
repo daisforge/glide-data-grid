@@ -145,7 +145,7 @@ Most data grids will want to set the majority of these props one way or another.
 | [highlightRegions](#highlightregions)              | Adds additional highlights to the data grid for showing contextually important cells.                   |
 | [onGridSelectionChange](#gridselection)            | Emitted whenever the `gridSelection` should change.                                                     |
 | [onSelectionCleared](#onselectioncleared)          | Emitted when the selection is explicitly cleared.                                                       |
-| [rangeOutlineOpacity](#rangeoutlineopacity)        | Sets the opacity of the active range outline.                                                           |
+| [activeSelectionRangeOutlineOpacity](#activeselectionrangeoutlineopacity)        | Sets the opacity of the active range outline.                                                           |
 | [rangeSelect](#rangeselect)                        | Controls if multiple ranges can be selected at once.                                                    |
 | [rangeSelectionBlending](#rangeselectionblending)  | Controls how range selections may be mixed with other selection types.                                  |
 | [rowSelect](#rangeselect)                          | Controls if multiple rows can be selected at aonce.                                                     |
@@ -1002,13 +1002,13 @@ Emitted when the current selection is cleared, usually when the user presses "Es
 
 ---
 
-## rangeOutlineOpacity
+## activeSelectionRangeOutlineOpacity
 
 ```ts
-rangeOutlineOpacity?: number; // default 0.5
+activeSelectionRangeOutlineOpacity?: number; // default 1
 ```
 
-Sets the opacity of the active multi-cell range outline. Use `1` for a fully opaque accent-colored outline or `0` to hide it. The range fill and focus ring have their own styling.
+Sets the opacity of the active multi-cell range outline. By default the outline uses the fully opaque accent color. Set `0.5` for a translucent outline or `0` to hide it. The range fill and focus ring have their own styling.
 
 ---
 

@@ -19,7 +19,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-test("changing rangeOutlineOpacity updates the active range independently of focus and external outlines", () => {
+test("changing activeSelectionRangeOutlineOpacity updates the active range independently of focus and external outlines", () => {
     vi.useFakeTimers();
     const range = { x: 1, y: 1, width: 2, height: 3 };
     const selection: GridSelection = {
@@ -41,10 +41,10 @@ test("changing rangeOutlineOpacity updates the active range independently of foc
     const outlines = () => vi.mocked(drawGrid).mock.lastCall?.[0].highlightRegions;
     const rangeOutline = (alpha: number) => ({ range, style: "solid-outline", color: `rgba(18, 52, 86, ${alpha})` });
     const focusOutline = { range: focus, style: "solid-outline", color: props.theme.accentColor };
-    expect(outlines()).toEqual([external, rangeOutline(0.5), focusOutline]);
+    expect(outlines()).toEqual([external, rangeOutline(1), focusOutline]);
 
-    for (const opacity of [1, 0.25, 0]) {
-        rerender(<DataEditor {...props} rangeOutlineOpacity={opacity} />);
+    for (const opacity of [0.5, 0.25, 0, 1]) {
+        rerender(<DataEditor {...props} activeSelectionRangeOutlineOpacity={opacity} />);
         act(() => {
             vi.runAllTimers();
         });
