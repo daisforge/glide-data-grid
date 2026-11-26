@@ -145,6 +145,7 @@ Most data grids will want to set the majority of these props one way or another.
 | [highlightRegions](#highlightregions)              | Adds additional highlights to the data grid for showing contextually important cells.                   |
 | [onGridSelectionChange](#gridselection)            | Emitted whenever the `gridSelection` should change.                                                     |
 | [onSelectionCleared](#onselectioncleared)          | Emitted when the selection is explicitly cleared.                                                       |
+| [rangeOutlineOpacity](#rangeoutlineopacity)        | Sets the opacity of the active range outline.                                                           |
 | [rangeSelect](#rangeselect)                        | Controls if multiple ranges can be selected at once.                                                    |
 | [rangeSelectionBlending](#rangeselectionblending)  | Controls how range selections may be mixed with other selection types.                                  |
 | [rowSelect](#rangeselect)                          | Controls if multiple rows can be selected at aonce.                                                     |
@@ -998,6 +999,16 @@ onSelectionCleared?: () => void;
 ```
 
 Emitted when the current selection is cleared, usually when the user presses "Escape". `rowSelection`, `columnSelection`, and `gridSelection` should all be empty when this event is emitted. This event only emits when the user explicitly attempts to clear the selection.
+
+---
+
+## rangeOutlineOpacity
+
+```ts
+rangeOutlineOpacity?: number; // default 0.5
+```
+
+Sets the opacity of the active multi-cell range outline. Use `1` for a fully opaque accent-colored outline or `0` to hide it. The range fill and focus ring have their own styling.
 
 ---
 

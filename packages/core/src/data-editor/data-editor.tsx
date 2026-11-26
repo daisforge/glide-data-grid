@@ -460,6 +460,12 @@ export interface DataEditorProps extends Props, Pick<DataGridSearchProps, "image
      */
     readonly rangeSelectionColumnSpanning?: boolean;
 
+    /** Opacity of the accent-colored outline around the active multi-cell range, from 0 (hidden) to 1 (opaque).
+     * @group Selection
+     * @defaultValue 0.5
+     */
+    readonly rangeOutlineOpacity?: number;
+
     /** Sets the initial scroll Y offset.
      * @see {@link scrollOffsetX}
      * @group Advanced
@@ -925,6 +931,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
         onHeaderClicked,
         onColumnProposeMove,
         rangeSelectionColumnSpanning = true,
+        rangeOutlineOpacity = 0.5,
         spanRangeBehavior = "default",
         onGroupHeaderClicked,
         onCellContextMenu,
@@ -1414,9 +1421,10 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
             });
         }
 
-        if (highlightRange !== undefined) {
+        const opacity = Number.isFinite(rangeOutlineOpacity) ? clamp(rangeOutlineOpacity, 0, 1) : 0.5;
+        if (highlightRange !== undefined && opacity > 0) {
             regions.push({
-                color: withAlpha(mergedTheme.accentColor, 0.5),
+                color: withAlpha(mergedTheme.accentColor, opacity),
                 range: highlightRange,
                 style: "solid-outline",
             });
@@ -1454,6 +1462,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
     }, [
         fillHighlightRegion,
         highlightRange,
+        rangeOutlineOpacity,
         highlightFocusCol,
         highlightFocusRow,
         highlightRegionsIn,
