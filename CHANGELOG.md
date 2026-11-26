@@ -1,3 +1,10 @@
+# [6.15.0](https://github.com/daisforge/glide-data-grid/compare/v6.14.0...v6.15.0) (2026-11-26)
+
+
+### Features
+
+* рисовать рамку активного диапазона полным акцентным цветом ([#78](https://github.com/daisforge/glide-data-grid/issues/78)) ([c07c3bc](https://github.com/daisforge/glide-data-grid/commit/c07c3bc8dfeb194848d8290c23042b633d467fdc))
+
 # [6.14.0](https://github.com/RamK-16/glide/compare/v6.13.0...v6.14.0) (2026-11-19)
 
 
