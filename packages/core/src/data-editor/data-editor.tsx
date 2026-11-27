@@ -3458,7 +3458,6 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
             getSelectionRowLimits,
             gridSelection,
             mangledCols.length,
-            rangeSelect,
             rowMarkerOffset,
             rows,
             scrollTo,

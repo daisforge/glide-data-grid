@@ -31,6 +31,11 @@ import {
     standardAfterEach,
 } from "./test-utils.js";
 
+const clickCell = (canvas: Element, cell: Item, modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => {
+    const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
+    sendClick(canvas, { clientX, clientY, ...modifiers });
+};
+
 describe("data-editor", () => {
     vi.mock("../src/common/resize-detector", () => {
         return {
@@ -45,15 +50,6 @@ describe("data-editor", () => {
     afterEach(() => {
         standardAfterEach();
     });
-
-    const clickCell = (
-        canvas: Element,
-        cell: Item,
-        modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}
-    ) => {
-        const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
-        sendClick(canvas, { clientX, clientY, ...modifiers });
-    };
 
     test("Focus a11y cell", async () => {
         const spy = vi.fn();
