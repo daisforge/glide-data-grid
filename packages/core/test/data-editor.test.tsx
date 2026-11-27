@@ -5321,6 +5321,68 @@ describe("data-editor", () => {
         );
     });
 
+    test("Обычный клик по активной ячейке сбрасывает остальные выделения", async () => {
+        const editSpy = vi.fn();
+        const selectionSpy = vi.fn();
+        vi.useFakeTimers();
+        render(
+            <EventedDataEditor
+                {...basicProps}
+                onCellEdited={editSpy}
+                onGridSelectionChange={selectionSpy}
+                rangeSelect="multi-rect"
+            />,
+            {
+                wrapper: Context,
+            }
+        );
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 3]); // B4
+        clickCell(canvas, [1, 1], { ctrlKey: true }); // B2
+        clickCell(canvas, [1, 2], { shiftKey: true }); // B3
+        clickCell(canvas, [1, 1]); // B2 — активная ячейка, но диапазон уже B2:B3
+
+        expect(selectionSpy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [1, 1],
+                    range: { x: 1, y: 1, width: 1, height: 1 },
+                    rangeStack: [],
+                },
+            })
+        );
+
+        fireEvent.keyDown(canvas, { key: "Delete" });
+
+        expect(editSpy.mock.calls.map(([location]) => location)).toEqual([[1, 1]]);
+    });
+
+    test("Обычный клик по активной ячейке схлопывает диапазон в режиме rect", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 1]); // B2
+        clickCell(canvas, [1, 3], { shiftKey: true }); // B4
+        clickCell(canvas, [1, 1]); // B2 — исходная ячейка диапазона B2:B4
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [1, 1],
+                    range: { x: 1, y: 1, width: 1, height: 1 },
+                    rangeStack: [],
+                },
+            })
+        );
+    });
+
     test("Ctrl+Shift-клик не добавляет в стек диапазон, уже покрытый новым выделением", async () => {
         const spy = vi.fn();
         vi.useFakeTimers();
