@@ -5296,6 +5296,30 @@ describe("data-editor", () => {
         );
     });
 
+    test("Shift-клик по исходной ячейке схлопывает диапазон в режиме rect", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 2]); // B3
+        clickCell(canvas, [1, 5], { shiftKey: true }); // B6
+        clickCell(canvas, [1, 2], { shiftKey: true }); // B3 — исходная ячейка диапазона B3:B6
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [1, 2],
+                    range: { x: 1, y: 2, width: 1, height: 1 },
+                    rangeStack: [],
+                },
+            })
+        );
+    });
+
     test("Обычный клик после Shift-клика очищает ранее выбранные диапазоны", async () => {
         const spy = vi.fn();
         vi.useFakeTimers();
