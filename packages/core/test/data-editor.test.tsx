@@ -46,6 +46,15 @@ describe("data-editor", () => {
         standardAfterEach();
     });
 
+    const clickCell = (
+        canvas: Element,
+        cell: Item,
+        modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}
+    ) => {
+        const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
+        sendClick(canvas, { clientX, clientY, ...modifiers });
+    };
+
     test("Focus a11y cell", async () => {
         const spy = vi.fn();
         vi.useFakeTimers();
@@ -3701,6 +3710,60 @@ describe("data-editor", () => {
         expect(spy).toBeCalledTimes(10);
     });
 
+    test("Delete обрабатывает пересекающиеся диапазоны один раз и сохраняет выделение", async () => {
+        const spy = vi.fn();
+        const selectionSpy = vi.fn();
+        vi.useFakeTimers();
+        render(
+            <EventedDataEditor
+                {...basicProps}
+                onCellEdited={spy}
+                onGridSelectionChange={selectionSpy}
+                rangeSelect="multi-rect"
+            />,
+            {
+                wrapper: Context,
+            }
+        );
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 3]); // B4
+        clickCell(canvas, [1, 1], { ctrlKey: true }); // B2
+        clickCell(canvas, [1, 5], { shiftKey: true }); // B6
+
+        fireEvent.keyDown(canvas, { key: "Delete" });
+
+        expect(spy.mock.calls.map(([location]) => location)).toEqual([
+            [1, 1],
+            [1, 2],
+            [1, 3],
+            [1, 4],
+            [1, 5],
+        ]);
+        expect(selectionSpy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [1, 1],
+                    range: { x: 1, y: 1, width: 1, height: 5 },
+                    rangeStack: [{ x: 1, y: 3, width: 1, height: 1 }],
+                },
+            })
+        );
+
+        clickCell(canvas, [1, 2], { shiftKey: true }); // B3 — сужает активный диапазон до B2:B3
+
+        expect(selectionSpy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [1, 1],
+                    range: { x: 1, y: 1, width: 1, height: 2 },
+                    rangeStack: [{ x: 1, y: 3, width: 1, height: 1 }],
+                },
+            })
+        );
+    });
+
     test("Click out of bounds", async () => {
         const spy = vi.fn();
         vi.useFakeTimers();
@@ -5172,14 +5235,9 @@ describe("data-editor", () => {
         prep();
 
         const canvas = screen.getByTestId("data-grid-canvas");
-        const clickCell = (cell: Item, modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => {
-            const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
-            sendClick(canvas, { clientX, clientY, ...modifiers });
-        };
-
-        clickCell([1, 1], { ctrlKey: true });
-        clickCell([2, 3], { ctrlKey: true });
-        clickCell([2, 6], { shiftKey: true });
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        clickCell(canvas, [2, 6], { shiftKey: true });
 
         expect(spy).toHaveBeenLastCalledWith(
             expect.objectContaining({
@@ -5201,15 +5259,10 @@ describe("data-editor", () => {
         prep();
 
         const canvas = screen.getByTestId("data-grid-canvas");
-        const clickCell = (cell: Item, modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => {
-            const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
-            sendClick(canvas, { clientX, clientY, ...modifiers });
-        };
-
-        clickCell([1, 1], { ctrlKey: true });
-        clickCell([2, 3], { ctrlKey: true });
-        clickCell([2, 6], { shiftKey: true });
-        clickCell([2, 1], { shiftKey: true });
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        clickCell(canvas, [2, 6], { shiftKey: true });
+        clickCell(canvas, [2, 1], { shiftKey: true });
 
         expect(spy).toHaveBeenLastCalledWith(
             expect.objectContaining({
@@ -5222,7 +5275,82 @@ describe("data-editor", () => {
         );
     });
 
-    test("Shift-клик сохраняет ранее выбранные ячейки в режиме multi-cell", async () => {
+    test("Shift-клик по исходной ячейке сужает диапазон и сохраняет выделения, выбранные с Ctrl", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="multi-rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        clickCell(canvas, [2, 6], { shiftKey: true });
+        clickCell(canvas, [2, 3], { shiftKey: true });
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [2, 3],
+                    range: { x: 2, y: 3, width: 1, height: 1 },
+                    rangeStack: [{ x: 1, y: 1, width: 1, height: 1 }],
+                },
+            })
+        );
+    });
+
+    test("Обычный клик после Shift-клика очищает ранее выбранные диапазоны", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="multi-rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        clickCell(canvas, [2, 6], { shiftKey: true });
+        clickCell(canvas, [4, 4]);
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [4, 4],
+                    range: { x: 4, y: 4, width: 1, height: 1 },
+                    rangeStack: [],
+                },
+            })
+        );
+    });
+
+    test("Ctrl+Shift-клик не добавляет в стек диапазон, уже покрытый новым выделением", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="multi-rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        clickCell(canvas, [2, 6], { ctrlKey: true, shiftKey: true });
+        clickCell(canvas, [3, 6], { shiftKey: true });
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [2, 3],
+                    range: { x: 2, y: 3, width: 2, height: 4 },
+                    rangeStack: [{ x: 1, y: 1, width: 1, height: 1 }],
+                },
+            })
+        );
+    });
+
+    test("Shift-клик не меняет выделение в режиме multi-cell", async () => {
         const spy = vi.fn();
         vi.useFakeTimers();
         render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="multi-cell" />, {
@@ -5231,20 +5359,43 @@ describe("data-editor", () => {
         prep();
 
         const canvas = screen.getByTestId("data-grid-canvas");
-        const clickCell = (cell: Item, modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => {
-            const [clientX, clientY] = getCellCenterPositionForDefaultGrid(cell);
-            sendClick(canvas, { clientX, clientY, ...modifiers });
-        };
-
-        clickCell([1, 1], { ctrlKey: true });
-        clickCell([2, 3], { ctrlKey: true });
-        clickCell([2, 6], { shiftKey: true });
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
 
         expect(spy).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 current: {
                     cell: [2, 3],
                     range: { x: 2, y: 3, width: 1, height: 1 },
+                    rangeStack: [{ x: 1, y: 1, width: 1, height: 1 }],
+                },
+            })
+        );
+        spy.mockClear();
+
+        clickCell(canvas, [2, 6], { shiftKey: true });
+
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    test("Shift+стрелка сохраняет диапазоны, выбранные с Ctrl, в режиме multi-rect", async () => {
+        const spy = vi.fn();
+        vi.useFakeTimers();
+        render(<EventedDataEditor {...basicProps} onGridSelectionChange={spy} rangeSelect="multi-rect" />, {
+            wrapper: Context,
+        });
+        prep();
+
+        const canvas = screen.getByTestId("data-grid-canvas");
+        clickCell(canvas, [1, 1], { ctrlKey: true });
+        clickCell(canvas, [2, 3], { ctrlKey: true });
+        fireEvent.keyDown(canvas, { key: "ArrowDown", shiftKey: true });
+
+        expect(spy).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                current: {
+                    cell: [2, 3],
+                    range: { x: 2, y: 3, width: 1, height: 2 },
                     rangeStack: [{ x: 1, y: 1, width: 1, height: 1 }],
                 },
             })

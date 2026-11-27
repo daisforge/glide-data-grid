@@ -29,8 +29,11 @@ export function useSelectionBehavior(
             expand: boolean,
             append: boolean,
             trigger: SelectionTrigger,
-            preserveRangeStack = false
+            isShiftExpansion = false
         ) => {
+            const preserveRangeStack =
+                isShiftExpansion && (rangeSelect === "multi-rect" || rangeSelect === "multi-cell");
+
             if ((rangeSelect === "cell" || rangeSelect === "multi-cell") && value !== undefined) {
                 value = {
                     ...value,
@@ -75,11 +78,20 @@ export function useSelectionBehavior(
 
             const addLastRange = append && (rangeSelect === "multi-rect" || rangeSelect === "multi-cell");
             if (addLastRange && newVal.current !== undefined && gridSelection.current !== undefined) {
+                const previousRange = gridSelection.current.range;
+                const currentRange = newVal.current.range;
+                const previousRangeIsContained =
+                    previousRange.x >= currentRange.x &&
+                    previousRange.y >= currentRange.y &&
+                    previousRange.x + previousRange.width <= currentRange.x + currentRange.width &&
+                    previousRange.y + previousRange.height <= currentRange.y + currentRange.height;
                 newVal = {
                     ...newVal,
                     current: {
                         ...newVal.current,
-                        rangeStack: [...gridSelection.current.rangeStack, gridSelection.current.range],
+                        rangeStack: previousRangeIsContained
+                            ? gridSelection.current.rangeStack
+                            : [...gridSelection.current.rangeStack, previousRange],
                     },
                 };
             }

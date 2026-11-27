@@ -363,21 +363,15 @@ export function cellIsInRange(
     cell: InnerGridCell,
     selection: GridSelection,
     includeSingleSelection: boolean
-): number {
-    let result = 0;
-    if (selection.current === undefined) return result;
+): boolean {
+    if (selection.current === undefined) return false;
 
-    const range = selection.current.range;
+    const { range, rangeStack } = selection.current;
 
     if ((includeSingleSelection || range.height * range.width > 1) && cellIsInRect(location, cell, range)) {
-        result++;
+        return true;
     }
-    for (const r of selection.current.rangeStack) {
-        if (cellIsInRect(location, cell, r)) {
-            result++;
-        }
-    }
-    return result;
+    return rangeStack.some(r => cellIsInRect(location, cell, r));
 }
 
 export function remapForDnDState(

@@ -2172,7 +2172,10 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                     const customTargetColumn = getCustomNewRowTargetColumn(col);
                     void appendRow(customTargetColumn ?? col);
                 } else {
-                    if (cellCol !== col || cellRow !== row) {
+                    const shiftCanRecalculateRange =
+                        (args.shiftKey || args.isLongTouch === true) &&
+                        (rangeSelect === "rect" || rangeSelect === "multi-rect");
+                    if (cellCol !== col || cellRow !== row || shiftCanRecalculateRange) {
                         const cell = getMangledCellContent(args.location);
                         const renderer = getCellRenderer(cell);
 
@@ -2214,6 +2217,12 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                                 return;
                             }
 
+                            if (rangeSelect === "multi-cell") {
+                                lastSelectedRowRef.current = undefined;
+                                focus();
+                                return;
+                            }
+
                             const left = Math.min(col, cellCol);
                             const right = Math.max(col, cellCol);
                             const top = Math.min(row, cellRow);
@@ -2231,7 +2240,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                                 true,
                                 isMultiKey,
                                 "click",
-                                rangeSelect === "multi-rect" || rangeSelect === "multi-cell"
+                                true
                             );
                             lastSelectedRowRef.current = undefined;
                             focus();
@@ -3440,7 +3449,8 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                 },
                 true,
                 false,
-                "keyboard-select"
+                "keyboard-select",
+                true
             );
         },
         [
@@ -3448,6 +3458,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
             getSelectionRowLimits,
             gridSelection,
             mangledCols.length,
+            rangeSelect,
             rowMarkerOffset,
             rows,
             scrollTo,
@@ -3583,11 +3594,15 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
     }, []);
 
     const deleteRange = React.useCallback(
-        (r: Rectangle) => {
+        (r: Rectangle, deletedCells = new Set<string>()) => {
             focus();
             const editList: EditListItem[] = [];
             for (let x = r.x; x < r.x + r.width; x++) {
                 for (let y = r.y; y < r.y + r.height; y++) {
+                    const cellKey = `${x},${y}`;
+                    if (deletedCells.has(cellKey)) continue;
+                    deletedCells.add(cellKey);
+
                     const cellValue = getCellContent([x - rowMarkerOffset, y]);
                     // Покрытая ячейка слитого блока: очистку выполнит origin (если он в диапазоне),
                     // здесь пропускаем — иначе onCellEdited летит в середину блока.
@@ -3678,30 +3693,37 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                     // 2) secondary ranges
                     // 3) columns
                     // 4) rows
+                    const deletedCells = new Set<string>();
 
                     if (toDelete.current !== undefined) {
-                        deleteRange(toDelete.current.range);
+                        deleteRange(toDelete.current.range, deletedCells);
                         for (const r of toDelete.current.rangeStack) {
-                            deleteRange(r);
+                            deleteRange(r, deletedCells);
                         }
                     }
 
                     for (const r of toDelete.rows) {
-                        deleteRange({
-                            x: rowMarkerOffset,
-                            y: r,
-                            width: columnsIn.length,
-                            height: 1,
-                        });
+                        deleteRange(
+                            {
+                                x: rowMarkerOffset,
+                                y: r,
+                                width: columnsIn.length,
+                                height: 1,
+                            },
+                            deletedCells
+                        );
                     }
 
                     for (const col of toDelete.columns) {
-                        deleteRange({
-                            x: col,
-                            y: 0,
-                            width: 1,
-                            height: rows,
-                        });
+                        deleteRange(
+                            {
+                                x: col,
+                                y: 0,
+                                width: 1,
+                                height: rows,
+                            },
+                            deletedCells
+                        );
                     }
                 }
             }
