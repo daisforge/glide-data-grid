@@ -2181,7 +2181,18 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                     const customTargetColumn = getCustomNewRowTargetColumn(col);
                     void appendRow(customTargetColumn ?? col);
                 } else {
-                    if (cellCol !== col || cellRow !== row) {
+                    const shiftCanRecalculateRange =
+                        (args.shiftKey || args.isLongTouch === true) &&
+                        (rangeSelect === "rect" || rangeSelect === "multi-rect");
+                    const clickCanResetMultiSelection =
+                        !args.shiftKey &&
+                        args.isLongTouch !== true &&
+                        !isMultiKey &&
+                        gridSelection.current !== undefined &&
+                        (gridSelection.current.range.width > 1 ||
+                            gridSelection.current.range.height > 1 ||
+                            gridSelection.current.rangeStack.length > 0);
+                    if (cellCol !== col || cellRow !== row || shiftCanRecalculateRange || clickCanResetMultiSelection) {
                         const cell = getMangledCellContent(args.location);
                         const renderer = getCellRenderer(cell);
 
@@ -2223,6 +2234,12 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                                 return;
                             }
 
+                            if (rangeSelect === "multi-cell") {
+                                lastSelectedRowRef.current = undefined;
+                                focus();
+                                return;
+                            }
+
                             const left = Math.min(col, cellCol);
                             const right = Math.max(col, cellCol);
                             const top = Math.min(row, cellRow);
@@ -2239,7 +2256,8 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                                 },
                                 true,
                                 isMultiKey,
-                                "click"
+                                "click",
+                                true
                             );
                             lastSelectedRowRef.current = undefined;
                             focus();
@@ -2327,6 +2345,7 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
         [
             rowSelect,
             columnSelect,
+            rangeSelect,
             gridSelection,
             hasRowMarkers,
             rowMarkerOffset,
@@ -3447,7 +3466,8 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                 },
                 true,
                 false,
-                "keyboard-select"
+                "keyboard-select",
+                true
             );
         },
         [
@@ -3590,11 +3610,34 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
     }, []);
 
     const deleteRange = React.useCallback(
-        (r: Rectangle) => {
+        (r: Rectangle, previousRanges?: readonly Rectangle[], previouslyDeletedRows?: CompactSelection) => {
             focus();
             const editList: EditListItem[] = [];
+            const overlappingRanges =
+                previousRanges?.filter(
+                    previous =>
+                        previous.x < r.x + r.width &&
+                        r.x < previous.x + previous.width &&
+                        previous.y < r.y + r.height &&
+                        r.y < previous.y + previous.height
+                ) ?? [];
+            const hasOverlappingRanges = overlappingRanges.length > 0;
             for (let x = r.x; x < r.x + r.width; x++) {
                 for (let y = r.y; y < r.y + r.height; y++) {
+                    if (
+                        (hasOverlappingRanges &&
+                            overlappingRanges.some(
+                                previous =>
+                                    x >= previous.x &&
+                                    x < previous.x + previous.width &&
+                                    y >= previous.y &&
+                                    y < previous.y + previous.height
+                            )) ||
+                        previouslyDeletedRows?.hasIndex(y) === true
+                    ) {
+                        continue;
+                    }
+
                     const cellValue = getCellContent([x - rowMarkerOffset, y]);
                     // Покрытая ячейка слитого блока: очистку выполнит origin (если он в диапазоне),
                     // здесь пропускаем — иначе onCellEdited летит в середину блока.
@@ -3683,32 +3726,43 @@ const DataEditorImpl: React.ForwardRefRenderFunction<DataEditorRef, DataEditorPr
                     // delete order:
                     // 1) primary range
                     // 2) secondary ranges
-                    // 3) columns
-                    // 4) rows
+                    // 3) rows
+                    // 4) columns
+                    // Track rectangles instead of allocating a key for every selected cell.
+                    const previousRanges: Rectangle[] = [];
 
                     if (toDelete.current !== undefined) {
-                        deleteRange(toDelete.current.range);
+                        deleteRange(toDelete.current.range, previousRanges);
+                        previousRanges.push(toDelete.current.range);
                         for (const r of toDelete.current.rangeStack) {
-                            deleteRange(r);
+                            deleteRange(r, previousRanges);
+                            previousRanges.push(r);
                         }
                     }
 
                     for (const r of toDelete.rows) {
-                        deleteRange({
-                            x: rowMarkerOffset,
-                            y: r,
-                            width: columnsIn.length,
-                            height: 1,
-                        });
+                        deleteRange(
+                            {
+                                x: rowMarkerOffset,
+                                y: r,
+                                width: columnsIn.length,
+                                height: 1,
+                            },
+                            previousRanges
+                        );
                     }
 
                     for (const col of toDelete.columns) {
-                        deleteRange({
-                            x: col,
-                            y: 0,
-                            width: 1,
-                            height: rows,
-                        });
+                        deleteRange(
+                            {
+                                x: col,
+                                y: 0,
+                                width: 1,
+                                height: rows,
+                            },
+                            previousRanges,
+                            toDelete.rows.length > 0 ? toDelete.rows : undefined
+                        );
                     }
                 }
             }

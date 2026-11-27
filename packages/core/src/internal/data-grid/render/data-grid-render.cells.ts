@@ -629,7 +629,7 @@ export function drawCells(
                         spanTouchesSelection(selection.rows, selection.columns, spanGeom.cols, spanGeom.rows);
 
                     const isSelected = cellIsSelected(cellIndex, cell, selection);
-                    let accentCount = cellIsInRange(cellIndex, cell, fillSelection, drawFocus);
+                    let accentCount = cellIsInRange(cellIndex, cell, fillSelection, drawFocus) ? 1 : 0;
                     const spanIsHighlighted =
                         cell.span !== undefined &&
                         selection.columns.some(

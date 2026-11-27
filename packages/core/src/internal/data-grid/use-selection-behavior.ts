@@ -22,15 +22,21 @@ export function useSelectionBehavior(
     rangeSelect: "none" | "cell" | "rect" | "multi-cell" | "multi-rect",
     rangeSelectionColumnSpanning: boolean
 ) {
+    const isMultiCell = rangeSelect === "multi-cell";
+    const isMultiRange = isMultiCell || rangeSelect === "multi-rect";
+
     // if append is true, the current range will be added to the rangeStack
     const setCurrent = React.useCallback(
         (
             value: Pick<NonNullable<GridSelection["current"]>, "cell" | "range"> | undefined,
             expand: boolean,
             append: boolean,
-            trigger: SelectionTrigger
+            trigger: SelectionTrigger,
+            isShiftExpansion = false
         ) => {
-            if ((rangeSelect === "cell" || rangeSelect === "multi-cell") && value !== undefined) {
+            const preserveRangeStack = isShiftExpansion && isMultiRange;
+
+            if ((rangeSelect === "cell" || isMultiCell) && value !== undefined) {
                 value = {
                     ...value,
                     range: {
@@ -63,19 +69,31 @@ export function useSelectionBehavior(
                         ? undefined
                         : {
                               ...value,
-                              rangeStack: trigger === "drag" ? (gridSelection.current?.rangeStack ?? []) : [],
+                              rangeStack:
+                                  trigger === "drag" || preserveRangeStack
+                                      ? (gridSelection.current?.rangeStack ?? [])
+                                      : [],
                           },
                 columns: allowColumnCoSelect ? gridSelection.columns : CompactSelection.empty(),
                 rows: allowRowCoSelect ? gridSelection.rows : CompactSelection.empty(),
             };
 
-            const addLastRange = append && (rangeSelect === "multi-rect" || rangeSelect === "multi-cell");
+            const addLastRange = append && isMultiRange;
             if (addLastRange && newVal.current !== undefined && gridSelection.current !== undefined) {
+                const previousRange = gridSelection.current.range;
+                const currentRange = newVal.current.range;
+                const previousRangeIsContained =
+                    previousRange.x >= currentRange.x &&
+                    previousRange.y >= currentRange.y &&
+                    previousRange.x + previousRange.width <= currentRange.x + currentRange.width &&
+                    previousRange.y + previousRange.height <= currentRange.y + currentRange.height;
                 newVal = {
                     ...newVal,
                     current: {
                         ...newVal.current,
-                        rangeStack: [...gridSelection.current.rangeStack, gridSelection.current.range],
+                        rangeStack: previousRangeIsContained
+                            ? gridSelection.current.rangeStack
+                            : [...gridSelection.current.rangeStack, previousRange],
                     },
                 };
             }
@@ -84,6 +102,8 @@ export function useSelectionBehavior(
         [
             columnBehavior,
             gridSelection,
+            isMultiCell,
+            isMultiRange,
             rangeBehavior,
             rangeSelect,
             rangeSelectionColumnSpanning,
